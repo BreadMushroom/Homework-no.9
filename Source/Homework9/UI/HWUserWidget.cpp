@@ -1,6 +1,8 @@
 #include "UI/HWUserWidget.h"
 #include "Components/EditableTextBox.h"
 #include "Player/HWPlayerController.h"
+#include "Components/ScrollBox.h"
+#include "Components/TextBlock.h"
 
 void UHWUserWidget::NativeConstruct()
 {
@@ -37,5 +39,21 @@ void UHWUserWidget::OnChatInputTextCommitted(const FText& Text, ETextCommit::Typ
 				EditableTextBox_ChatInput->SetText(FText());
 			}
 		}
+	}
+}
+
+void UHWUserWidget::AddChatMessage(const FText& Text)
+{
+	if (IsValid(ScrollBox_ChatHistory) == true)
+	{
+		UTextBlock* TextBlock = NewObject<UTextBlock>(this);
+		if (IsValid(TextBlock) == true)
+		{
+			TextBlock->SetText(Text);
+			ScrollBox_ChatHistory->AddChild(TextBlock);
+			ScrollBox_ChatHistory->ScrollToEnd();
+
+		}
+		
 	}
 }
