@@ -3,6 +3,8 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "EngineUtils.h"
 #include "Player/HWPlayerState.h"
+#include "Kismet/GameplayStatics.h"
+#include "Game/HWGameModeBase.h"
 
 void AHWPlayerController::BeginPlay()
 {
@@ -44,7 +46,6 @@ void AHWPlayerController::SetChatMessageString(const FString& InChatMessageStrin
 
 void AHWPlayerController::PrintChatMessageString(const FString& InChatMessageString)
 {
-	//UKismetSystemLibrary::PrintString(this, InChatMessageString, true, true, FLinearColor::Red, 10.0f);
 	if (IsValid(ChatInputWidgetInstance) == true)
 	{
 		ChatInputWidgetInstance->AddChatMessage(FText::FromString(InChatMessageString));
@@ -58,13 +59,15 @@ void AHWPlayerController::ClientRPCPrintChatMessageString_Implementation(const F
 
 void AHWPlayerController::ServerRPCPrintChatMessageString_Implementation(const FString& InChatMessageString)
 {
-	for (TActorIterator<AHWPlayerController> It(GetWorld()); It; ++It)
+	AGameModeBase* GMB = UGameplayStatics::GetGameMode(this);
+	if (IsValid(GMB) == true)
 	{
-		AHWPlayerController* HWPlayerController = *It;
-		if (IsValid(HWPlayerController) == true)
+		AHWGameModeBase* HWGMB = Cast<AHWGameModeBase>(GMB);
+		if (IsValid(HWGMB) == true)
 		{
-			HWPlayerController->ClientRPCPrintChatMessageString(InChatMessageString);
+			HWGMB->PrintChatMessageString(this, InChatMessageString);
 		}
+
 	}
 }
 
