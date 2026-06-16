@@ -5,6 +5,12 @@
 #include "Player/HWPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Game/HWGameModeBase.h"
+#include "Net/UnrealNetwork.h"
+
+AHWPlayerController::AHWPlayerController()
+{
+	bReplicates = true;
+}
 
 void AHWPlayerController::BeginPlay()
 {
@@ -24,6 +30,15 @@ void AHWPlayerController::BeginPlay()
 		if (IsValid(ChatInputWidgetInstance) == true)
 		{
 			ChatInputWidgetInstance->AddToViewport();
+		}
+	}
+
+	if (IsValid(NotificationTextWidgetClass) == true)
+	{
+		NotificationTextWidgetInstance = CreateWidget<UUserWidget>(this, NotificationTextWidgetClass);
+		if (IsValid(NotificationTextWidgetInstance) == true)
+		{
+			NotificationTextWidgetInstance->AddToViewport();
 		}
 	}
 }
@@ -50,6 +65,13 @@ void AHWPlayerController::PrintChatMessageString(const FString& InChatMessageStr
 	{
 		ChatInputWidgetInstance->AddChatMessage(FText::FromString(InChatMessageString));
 	}
+}
+
+void AHWPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ThisClass, NotificationText);
 }
 
 void AHWPlayerController::ClientRPCPrintChatMessageString_Implementation(const FString& InChatMessageString)

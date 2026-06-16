@@ -5,6 +5,7 @@
 #include "HWPlayerController.generated.h"
 
 class UHWUserWidget;
+class UUserWidget;
 
 UCLASS()
 class HOMEWORK9_API AHWPlayerController : public APlayerController
@@ -12,6 +13,9 @@ class HOMEWORK9_API AHWPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
+
+	AHWPlayerController();
+
 	virtual void BeginPlay() override;
 
 	void SetChatMessageString(const FString& InChatMessageString);
@@ -24,6 +28,9 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerRPCPrintChatMessageString(const FString& InChatMessageString);
 
+	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
+
+
 protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UHWUserWidget> ChatInputWidgetClass;
@@ -32,4 +39,14 @@ protected:
 	TObjectPtr<UHWUserWidget> ChatInputWidgetInstance;
 
 	FString ChatMessageString;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> NotificationTextWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UUserWidget> NotificationTextWidgetInstance;
+
+public:
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	FText NotificationText;
 };

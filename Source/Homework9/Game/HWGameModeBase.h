@@ -24,6 +24,12 @@ public:
 
 	void PrintChatMessageString(AHWPlayerController* InChattingPlayerController, const FString& InChatMessageString);
 
+	void IncreaseGuessCount(AHWPlayerController* InChattingPlayerController);
+
+	void ResetGame();
+
+	void JudgeGame(AHWPlayerController* InChattingPlayerController, int InStrikeCount);
+
 protected:
 	FString NumberString;
 

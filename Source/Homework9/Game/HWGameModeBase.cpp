@@ -2,6 +2,7 @@
 #include "Player/HWPlayerState.h"
 #include "Player/HWPlayerController.h"
 #include "EngineUtils.h"
+#include "UI/HWUserWidget.h"
 
 void AHWGameModeBase::OnPostLogin(AController* NewPlayer)
 {
@@ -10,6 +11,8 @@ void AHWGameModeBase::OnPostLogin(AController* NewPlayer)
 	AHWPlayerController* HWPlayerController = Cast<AHWPlayerController>(NewPlayer);
 	if (IsValid(HWPlayerController) == true)
 	{
+		HWPlayerController->NotificationText = FText::FromString(TEXT("서버연결 완료!"));
+
 		AllPlayerControllers.Add(HWPlayerController);
 
 		static int32 PlayerNumber = 0;
@@ -53,6 +56,7 @@ bool AHWGameModeBase::IsGuessNumberString(const FString& InNumberString)
 	{
 		if (InNumberString.Len() != 3)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("3자리 수를 입력해 주십쇼."));
 			break;
 		}
 
@@ -63,6 +67,7 @@ bool AHWGameModeBase::IsGuessNumberString(const FString& InNumberString)
 			if (FChar::IsDigit(C) == false || C == '0')
 			{
 				bIsUnique = false;
+				UE_LOG(LogTemp, Warning, TEXT("문자 또는 0을 포함하지 마십쇼."));
 				break;
 			}
 
@@ -72,6 +77,7 @@ bool AHWGameModeBase::IsGuessNumberString(const FString& InNumberString)
 		if (UniqueDigits.Num() <= 2)
 		{
 			bIsUnique = false;
+			UE_LOG(LogTemp, Warning, TEXT("3자리 수를 입력해 주십쇼."));
 		}
 
 		if (bIsUnique == false)
@@ -127,6 +133,9 @@ void AHWGameModeBase::PrintChatMessageString(AHWPlayerController* InChattingPlay
 	if (IsGuessNumberString(GuessNumberString) == true)
 	{
 		FString JudgeResultString = JudgeResult(NumberString, GuessNumberString);
+
+		IncreaseGuessCount(InChattingPlayerController);
+
 		for (int32 i = AllPlayerControllers.Num() - 1; i >= 0; --i)
 		{
 			AHWPlayerController* HWPlayerController = AllPlayerControllers[i].Get();
@@ -136,9 +145,16 @@ void AHWGameModeBase::PrintChatMessageString(AHWPlayerController* InChattingPlay
 				continue;
 			}
 
-			FString CombineMessageString = InChatMessageString + TEXT("->") + JudgeResultString;
-			HWPlayerController->ClientRPCPrintChatMessageString(CombineMessageString);
+			AHWPlayerState* HWPS = InChattingPlayerController->GetPlayerState<AHWPlayerState>();
+			if (IsValid(HWPS) == true)
+			{
+				FString CombinedMessageString = InChatMessageString + TEXT(" -> ") + JudgeResultString + HWPS->GetPlayerInfoString();
+				HWPlayerController->ClientRPCPrintChatMessageString(CombinedMessageString);
+			}
 		}
+
+		int32 StrikeCount = FCString::Atoi(*JudgeResultString.Left(1));
+		JudgeGame(InChattingPlayerController, StrikeCount);
 	}
 	else
 	{
@@ -152,6 +168,91 @@ void AHWGameModeBase::PrintChatMessageString(AHWPlayerController* InChattingPlay
 			}
 
 			HWPlayerController->ClientRPCPrintChatMessageString(InChatMessageString);
+		}
+	}
+}
+
+void AHWGameModeBase::IncreaseGuessCount(AHWPlayerController* InChattingPlayerController)
+{
+	AHWPlayerState* HWPS = InChattingPlayerController->GetPlayerState<AHWPlayerState>();
+	if (IsValid(HWPS) == true)
+	{
+		HWPS->CurrentGuessCount++;
+	}
+}
+
+void AHWGameModeBase::ResetGame()
+{
+	NumberString = GenerateNumber();
+	UE_LOG(LogTemp, Error, TEXT("%s"), *NumberString);
+
+	for (int32 i = AllPlayerControllers.Num() - 1; i >= 0; --i)
+	{
+		AHWPlayerController* HWPlayerController = AllPlayerControllers[i].Get();
+		if (IsValid(HWPlayerController) == true)
+		{
+			AHWPlayerState* HWPS = HWPlayerController->GetPlayerState<AHWPlayerState>();
+			if (IsValid(HWPS) == true)
+			{
+				HWPS->CurrentGuessCount = 0;
+			}
+		}
+	}
+}
+
+void AHWGameModeBase::JudgeGame(AHWPlayerController* InChattingPlayerController, int InStrikeCount)
+{
+	if (3 == InStrikeCount)
+	{
+		AHWPlayerState* HWPS = InChattingPlayerController->GetPlayerState<AHWPlayerState>();
+
+		for (int32 i = AllPlayerControllers.Num() - 1; i >= 0; --i)
+		{
+			AHWPlayerController* HWPlayerController = AllPlayerControllers[i].Get();
+			if (IsValid(HWPlayerController) == true)
+			{
+				if (IsValid(HWPS) == true)
+				{
+					FString CombinedMessageString = HWPS->PlayerNameString + TEXT(" 이/가 게임에서 승리 하셨습니다.");
+					HWPlayerController->NotificationText = FText::FromString(CombinedMessageString);
+				}
+			}
+		}
+
+		ResetGame();
+	}
+	else
+	{
+		bool bIsDraw = true;
+		for (int32 i = AllPlayerControllers.Num() - 1; i >= 0; --i)
+		{
+			AHWPlayerController* HWPlayerController = AllPlayerControllers[i].Get();
+			if (IsValid(HWPlayerController) == true)
+			{
+				AHWPlayerState* HWPS = HWPlayerController->GetPlayerState<AHWPlayerState>();
+				if (IsValid(HWPS) == true)
+				{
+					if (HWPS->CurrentGuessCount < HWPS->MaxGuessCount)
+					{
+						bIsDraw = false;
+						break;
+					}
+				}
+			}
+		}
+
+		if (true == bIsDraw)
+		{
+			for (int32 i = AllPlayerControllers.Num() - 1; i >= 0; --i)
+			{
+				AHWPlayerController* HWPlayerController = AllPlayerControllers[i].Get();
+				if (IsValid(HWPlayerController) == true)
+				{
+					HWPlayerController->NotificationText = FText::FromString(TEXT("무승부!"));
+				}
+			}
+
+			ResetGame();
 		}
 	}
 }
